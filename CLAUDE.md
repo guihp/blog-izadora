@@ -20,7 +20,7 @@ Guia de instalação para pessoas: `README.md`. Este arquivo guarda o contexto p
 3. Publicar na Vercel (hospedagem recomendada; é ela que fornece a localização das visitas). Domínio final: **https://blog.izadoracarreirobarros.com** (subdomínio; na Vercel `NEXT_PUBLIC_SITE_URL` com esse valor, no `.env.local` continua o localhost:3001). Depois: Google Search Console (código em Configurações → Google e SEO) e envio do `/sitemap.xml`.
 4. Preencher `authorName` (nome da autora). Na Vercel: `NEWSLETTER_PROVIDER=brevo`, `BREVO_API_KEY`, `BREVO_LIST_ID=3`.
 5. Commits e pushes só quando pedirem.
-6. **Depois do deploy do 2FA**, aplicar a migração `is_admin_aal2` (o `is_admin()` novo do `schema.sql`). Antes do deploy não: o painel antigo no ar ficaria sem conseguir salvar. Corrigir na Vercel `NEXT_PUBLIC_SITE_URL=https://blog.izadoracarreirobarros.com` (o primeiro deploy saiu com `.com.br`).
+6. **Corrigir na Vercel** `NEXT_PUBLIC_SITE_URL=https://blog.izadoracarreirobarros.com` e fazer um redeploy. O deploy de 25/10/2026 ainda saiu com `.com.br` no canonical e no sitemap. Não há login da Vercel nesta máquina, então só a usuária consegue trocar.
 
 ## Arquitetura
 - **Next.js 15.5 (App Router) + React 19 + TypeScript**, CSS puro (sem Tailwind). As versões foram fixadas de propósito no Next 15 (o 16 muda APIs). Há um override de `postcss` no package.json para zerar o `npm audit`.
@@ -74,7 +74,7 @@ Guia de instalação para pessoas: `README.md`. Este arquivo guarda o contexto p
 
 ## Segurança do painel (25/10/2026)
 - 2FA obrigatório (TOTP do Supabase). O middleware manda sessões `aal1` para `/admin/verificar` (cadastro por QR code na 1ª vez e código nas seguintes). `signIn` redireciona para lá. As actions `mfaEnroll`/`mfaVerify` ficam em `actions.ts`.
-- `is_admin()` exige `auth.jwt()->>'aal' = 'aal2'` (em `schema.sql`). Validado por SQL com claims aal1 (false) e aal2 (true).
+- `is_admin()` exige `auth.jwt()->>'aal' = 'aal2'` (em `schema.sql`, migração `is_admin_aal2` aplicada em 25/10/2026, depois do deploy). Validado no banco: admin aal1 = false, aal2 = true, anon = false.
 - Limite de tentativas em memória (`src/lib/rate-limit.ts`): login 5/IP e 8/e-mail, 2FA 6/IP a cada 15 min. Cabeçalhos: HSTS, Permissions-Policy, COOP, CSP mínima (sem restringir scripts), `/admin` com `frame-ancestors 'none'`, `poweredByHeader: false`.
 - Bloqueio por IP foi descartado: o IP residencial muda e o 4G tem outro.
 - Recuperação (perdeu o celular): apagar de `auth.mfa_factors` (SQL no README).
