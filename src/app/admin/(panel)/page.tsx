@@ -100,7 +100,14 @@ export default async function AdminHome({ searchParams }: Props) {
           </li>
           <li>
             {newsletter ? (
-              <span className="status-dot">Newsletter: conectada ({newsletter})</span>
+              <span className="status-dot">
+                Newsletter: conectada ({newsletter}){" "}
+                {newsletter === "brevo" && (
+                  <Link href="/admin/emails" className="text-link">
+                    abrir e-mails →
+                  </Link>
+                )}
+              </span>
             ) : (
               <span className="status-dot status-dot--off">
                 Newsletter: não configurada — o formulário avisa às visitantes que as inscrições ainda não estão abertas.

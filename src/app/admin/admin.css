@@ -674,3 +674,159 @@ textarea.control {
   border-radius: 4px;
   background: var(--chart);
 }
+
+/* ───────────── Newsletter ───────────── */
+.segmented label {
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.segmented label[aria-current="page"] {
+  background: var(--rose-light);
+  color: var(--ink);
+}
+.segmented label:has(input:focus-visible) {
+  outline: 2px solid var(--rose-deep);
+  outline-offset: 2px;
+}
+.composer__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.composer__send {
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.email-preview {
+  display: grid;
+  gap: 8px;
+}
+.email-preview p {
+  margin: 0;
+  font-size: 0.92rem;
+}
+.email-preview iframe {
+  width: 100%;
+  height: 640px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #f4dde3;
+}
+.dns-value {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.8rem;
+  word-break: break-all;
+  user-select: all;
+}
+.badge--pending {
+  background: #f6e7d3;
+  color: #7a5426;
+}
+
+/* ───────────── Verificação em duas etapas ───────────── */
+.mfa-qr {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  text-align: center;
+  font-size: 0.88rem;
+}
+.mfa-qr img {
+  background: #fff;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+}
+.mfa-code {
+  font-size: 1.5rem;
+  letter-spacing: 0.4em;
+  text-align: center;
+}
+
+/* ───────────── E-mails ───────────── */
+.tabs {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  max-width: 100%;
+  margin-bottom: 22px;
+  scrollbar-width: none;
+}
+.tabs a {
+  white-space: nowrap;
+}
+.badge--ok {
+  background: var(--sage-wash);
+  color: var(--sage-deep);
+  border-color: rgba(86, 104, 78, 0.22);
+}
+.badge--rose {
+  background: var(--rose-wash);
+  color: var(--rose-deep);
+}
+.badge--muted {
+  background: var(--cream-deep);
+  color: var(--ink-soft);
+  border-color: var(--line);
+}
+.badge--warn {
+  background: #f6e7d3;
+  color: #7a5426;
+  border-color: rgba(122, 84, 38, 0.2);
+}
+.badge--bad {
+  background: #fbecea;
+  color: #8a3329;
+  border-color: rgba(138, 51, 41, 0.22);
+}
+.panel__head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.panel__head h2 {
+  margin: 0;
+}
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.toolbar .control {
+  flex: 1 1 220px;
+  max-width: 360px;
+}
+.pager {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: flex-end;
+  margin-top: 14px;
+  font-size: 0.88rem;
+}
+.kv {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 18px;
+  font-size: 0.92rem;
+  margin: 0;
+}
+.kv dt {
+  color: var(--ink-soft);
+}
+.kv dd {
+  margin: 0;
+  word-break: break-word;
+}

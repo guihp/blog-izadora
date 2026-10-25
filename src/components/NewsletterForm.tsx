@@ -32,7 +32,7 @@ export function NewsletterForm() {
       });
       const body = (await res.json().catch(() => ({}))) as { message?: string };
       if (res.ok) {
-        setStatus({ kind: "success", message: body.message ?? "Inscrição feita! Confira a sua caixa de entrada. ♡" });
+        setStatus({ kind: "success", message: body.message ?? "Inscrição feita! ♡" });
         form.reset();
       } else {
         setStatus({ kind: "error", message: body.message ?? "Não foi possível concluir agora. Tente novamente em instantes." });

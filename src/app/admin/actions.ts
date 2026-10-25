@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { demoCategories, demoDevotionals, demoPosts, demoVideos } from "@/content/demo";
 import { requireAdmin } from "@/lib/auth";
+import { clearAttempts, clientIp, registerAttempt, tooManyAttempts } from "@/lib/rate-limit";
 import { renderMarkdown } from "@/lib/markdown";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { SiteSettings } from "@/lib/types";
@@ -34,13 +35,72 @@ function dbError(error: { code?: string; message: string }, what: string): Actio
 }
 
 // ───────────── Autenticação ─────────────
+const LOGIN_WINDOW = 15 * 60_000;
+const TOO_MANY = "Muitas tentativas seguidas. Espere 15 minutos e tente de novo.";
+
 export async function signIn(_prev: ActionState, fd: FormData): Promise<ActionState> {
-  const email = str(fd, "email");
+  const email = str(fd, "email").toLowerCase();
   const password = String(fd.get("password") ?? "");
   if (!email || !password) return { error: "Preencha e-mail e senha." };
+  const ip = await clientIp();
+  // 5 erros por IP ou 8 por e-mail a cada 15 minutos
+  if (tooManyAttempts(`login:ip:${ip}`, 5) || tooManyAttempts(`login:mail:${email}`, 8)) {
+    return { error: TOO_MANY };
+  }
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) return { error: "E-mail ou senha incorretos." };
+  if (error) {
+    registerAttempt(`login:ip:${ip}`, LOGIN_WINDOW);
+    registerAttempt(`login:mail:${email}`, LOGIN_WINDOW);
+    return { error: "E-mail ou senha incorretos." };
+  }
+  clearAttempts(`login:ip:${ip}`);
+  redirect("/admin/verificar");
+}
+
+/** Gera um novo QR code do app autenticador (só quando ainda não há um confirmado). */
+export async function mfaEnroll(): Promise<{ factorId?: string; qr?: string; secret?: string; error?: string }> {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Sua sessão expirou. Entre de novo." };
+
+  const { data: factors } = await supabase.auth.mfa.listFactors();
+  if (factors?.all.some((f) => f.factor_type === "totp" && f.status === "verified")) {
+    return { error: "Esta conta já tem um app autenticador. Use o código dele." };
+  }
+  // Tentativas anteriores que não foram confirmadas
+  for (const f of factors?.all ?? []) {
+    if (f.factor_type === "totp" && f.status !== "verified") await supabase.auth.mfa.unenroll({ factorId: f.id });
+  }
+
+  const { data, error } = await supabase.auth.mfa.enroll({
+    factorType: "totp",
+    friendlyName: `Painel do blog (${new Date().toISOString().slice(0, 10)})`,
+    issuer: "Mulher dos Olhos de Deus",
+  });
+  if (error || !data) {
+    console.error("[admin] mfa enroll", error);
+    return { error: "Não foi possível gerar o QR code. Tente de novo." };
+  }
+  return { factorId: data.id, qr: data.totp.qr_code, secret: data.totp.secret };
+}
+
+export async function mfaVerify(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  const factorId = str(fd, "factorId");
+  const code = str(fd, "code").replace(/\D/g, "");
+  if (!factorId || code.length !== 6) return { error: "Digite os 6 números que aparecem no app." };
+  const ip = await clientIp();
+  if (tooManyAttempts(`mfa:${ip}`, 6)) return { error: TOO_MANY };
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId, code });
+  if (error) {
+    registerAttempt(`mfa:${ip}`, LOGIN_WINDOW);
+    return { error: "Código incorreto ou expirado. Confira se o horário do celular está certo e tente o código novo." };
+  }
+  clearAttempts(`mfa:${ip}`);
   redirect("/admin");
 }
 

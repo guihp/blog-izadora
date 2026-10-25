@@ -15,7 +15,7 @@ export function getNewsletterProvider(): NewsletterProvider | null {
   return null;
 }
 
-export type SubscribeResult = { ok: true; alreadySubscribed?: boolean } | { ok: false; reason: "invalid" | "provider" };
+export type SubscribeResult = { ok: true; alreadySubscribed?: boolean; isNew?: boolean } | { ok: false; reason: "invalid" | "provider" };
 
 export async function subscribe(provider: NewsletterProvider, email: string): Promise<SubscribeResult> {
   const signal = AbortSignal.timeout(10_000);
@@ -62,7 +62,8 @@ export async function subscribe(provider: NewsletterProvider, email: string): Pr
     headers: { "api-key": process.env.BREVO_API_KEY ?? "", "Content-Type": "application/json", Accept: "application/json" },
     body: JSON.stringify({ email, updateEnabled: true, ...(Number.isFinite(listId) && listId > 0 ? { listIds: [listId] } : {}) }),
   });
-  if (res.ok) return { ok: true };
+  // 201 = contato novo; 204 = contato que já existia (só entrou/voltou para a lista)
+  if (res.ok) return { ok: true, isNew: res.status === 201 };
   if (res.status === 400) return { ok: false, reason: "invalid" };
   console.error("[newsletter] brevo", res.status, (await res.text()).slice(0, 300));
   return { ok: false, reason: "provider" };

@@ -42,6 +42,18 @@ Sem nenhuma configuração, o site abre em **modo demonstração**: os 8 textos,
 | Vídeos | colar o link do YouTube, playlist/tema, destaque, miniatura personalizada |
 | Categorias | criar, renomear, reordenar, excluir |
 | Página inicial e textos | nome do blog, frase principal, foto do hero, carta de boas-vindas, newsletter, rodapé, página Sobre Mim (texto + foto), canal do YouTube e redes sociais |
+| Newsletter (Brevo) | inscritas, últimas cartinhas com abertura e cliques, **escrever e enviar uma cartinha** (texto, devocional, vídeo ou cartinha livre) com prévia e envio de teste, sincronizar os modelos com o Brevo e ver os registros DNS do domínio |
+
+### Segurança do painel
+
+- O login pede **e-mail, senha e o código de 6 números de um app autenticador** (Google Authenticator, Microsoft Authenticator ou o app Senhas do iPhone). No primeiro login aparece um QR code para cadastrar o app.
+- A exigência também está no banco: `is_admin()` só vale com a verificação em duas etapas (`aal2`). Quem tiver só a senha não altera nada, nem pela API.
+- Login e código têm limite de tentativas, e o painel nunca abre dentro de um iframe.
+- **Perdeu o celular?** No SQL Editor do Supabase, apague o app antigo e, no próximo login, cadastre um novo:
+  ```sql
+  delete from auth.mfa_factors
+  where user_id = (select id from auth.users where email = 'email-da-admin@exemplo.com');
+  ```
 
 **Versículos e referências:** no editor, o botão “✿ Versículo” cria um bloco assim:
 
@@ -62,6 +74,8 @@ O formulário envia para `/api/newsletter`, que valida o e-mail e repassa ao ser
 | Buttondown | `NEWSLETTER_PROVIDER=buttondown`, `BUTTONDOWN_API_KEY` |
 | MailerLite | `NEWSLETTER_PROVIDER=mailerlite`, `MAILERLITE_API_KEY`, `MAILERLITE_GROUP_ID` (opcional) |
 | Brevo | `NEWSLETTER_PROVIDER=brevo`, `BREVO_API_KEY`, `BREVO_LIST_ID` |
+
+Com o **Brevo**, quem se inscreve recebe na hora uma cartinha de boas-vindas, e o painel ganha a página **Newsletter** (envio de cartinhas, inscritas e estatísticas). Os modelos de e-mail ficam em `src/lib/email-templates.ts`. No Brevo, desative o bloqueio de IPs desconhecidos (Security → Authorised IPs), porque a Vercel não tem IP fixo. Para as cartinhas não caírem no spam, autentique o domínio: os registros DNS aparecem no próprio painel.
 
 Enquanto nada estiver configurado, quem tentar se inscrever recebe o aviso *“As cartinhas ainda não estão abertas para inscrição”*. Nenhum e-mail é guardado nem aparece como inscrito.
 

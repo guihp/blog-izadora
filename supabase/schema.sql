@@ -19,7 +19,9 @@ stable
 security definer
 set search_path = public
 as $$
-  select exists (select 1 from public.admins where user_id = auth.uid());
+  -- Só vale com a verificação em duas etapas feita (aal2): a senha sozinha não basta para alterar nada
+  select exists (select 1 from public.admins where user_id = auth.uid())
+     and coalesce(auth.jwt() ->> 'aal', '') = 'aal2';
 $$;
 
 revoke all on function public.is_admin() from public;

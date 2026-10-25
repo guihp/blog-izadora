@@ -10,6 +10,7 @@ const LINKS = [
   { href: "/admin/devocionais", label: "Devocionais" },
   { href: "/admin/videos", label: "Vídeos" },
   { href: "/admin/categorias", label: "Categorias" },
+  { href: "/admin/emails", label: "E-mails" },
   { href: "/admin/configuracoes", label: "Página inicial e textos" },
 ];
 

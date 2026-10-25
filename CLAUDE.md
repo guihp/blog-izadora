@@ -10,15 +10,17 @@ Guia de instalação para pessoas: `README.md`. Este arquivo guarda o contexto p
 - Admin: izadoracarreirodasilva08@gmail.com (dona do blog, em `public.admins`). Login confirmado por ela, mas o CRUD do painel, o upload de imagens e "Importar/Remover exemplos" ainda **não foram testados** contra o Supabase real.
 - Sessões anteriores: animações do Blender no hero, menu do painel fixo, página Estatísticas e SEO. Em 21/10/2026: reformulação visual completa (seção "Design"). Os tipos, o `next build` (rodado numa cópia) e as capturas foram conferidos.
 - Avisos do advisor que são esperados: `is_admin()` executável por anon/authenticated (as políticas RLS de leitura pública precisam dela); `rls_auto_enable()` não é nossa (vem do próprio Supabase).
-- A newsletter ainda não tem provedor configurado. A API devolve 503 com um aviso honesto, nunca uma inscrição falsa.
-- Foi feito `git init`, mas **nenhum commit** ainda.
+- Newsletter: **Brevo** (conta da Izadora, plano grátis 300 envios/dia). Lista id **3** "Cartinhas para florescer (blog)", na pasta "Blog Mulher dos Olhos de Deus". Bloqueio de IP do Brevo **desativado** (obrigatório na Vercel). Boas-vindas automáticas na inscrição nova (`after()` em `api/newsletter`, testado: entregue). O Brevo não pede confirmação de inscrição.
+- Domínio do blog: **blog.izadoracarreirobarros.com** (é `.com`, não `.com.br`; DNS na **Vercel**, ns1/ns2.vercel-dns.com). O site já está no ar lá. Domínio `izadoracarreirobarros.com` **autenticado no Brevo em 25/10/2026** (os 4 DNS foram adicionados na Vercel e a autenticação foi feita pela API `PUT /senders/domains/{d}/authenticate`). Remetente id 2 `cartinhas@izadoracarreirobarros.com` ("Mulher dos Olhos de Deus") ativo, com replyTo para o Gmail. Os modelos 1–5 já usam esse remetente, e as boas-vindas foram testadas e saíram por ele.
+- Repositório no GitHub: https://github.com/guihp/blog-izadora (branch `main`, primeiro commit em 25/10/2026). Identidade do git configurada só neste repo (guihp).
 
 ## Próximos passos
 1. Testar o painel com o Supabase real: criar/publicar/despublicar artigo, upload de capa, devocional da semana, vídeo, configurações, importar e remover exemplos.
 2. Recomendar desativar novos cadastros (sign-ups) em Authentication no Supabase.
-3. Publicar na Vercel (hospedagem recomendada; é ela que fornece a localização das visitas). Depois: `NEXT_PUBLIC_SITE_URL` com o domínio final, Google Search Console (código em Configurações → Google e SEO) e envio do `/sitemap.xml`.
-4. Preencher `authorName` (nome da autora) e escolher um provedor de newsletter.
-5. Primeiro commit, quando a usuária pedir.
+3. Publicar na Vercel (hospedagem recomendada; é ela que fornece a localização das visitas). Domínio final: **https://blog.izadoracarreirobarros.com** (subdomínio; na Vercel `NEXT_PUBLIC_SITE_URL` com esse valor, no `.env.local` continua o localhost:3001). Depois: Google Search Console (código em Configurações → Google e SEO) e envio do `/sitemap.xml`.
+4. Preencher `authorName` (nome da autora). Na Vercel: `NEWSLETTER_PROVIDER=brevo`, `BREVO_API_KEY`, `BREVO_LIST_ID=3`.
+5. Commits e pushes só quando pedirem.
+6. **Depois do deploy do 2FA**, aplicar a migração `is_admin_aal2` (o `is_admin()` novo do `schema.sql`). Antes do deploy não: o painel antigo no ar ficaria sem conseguir salvar. Corrigir na Vercel `NEXT_PUBLIC_SITE_URL=https://blog.izadoracarreirobarros.com` (o primeiro deploy saiu com `.com.br`).
 
 ## Arquitetura
 - **Next.js 15.5 (App Router) + React 19 + TypeScript**, CSS puro (sem Tailwind). As versões foram fixadas de propósito no Next 15 (o 16 muda APIs). Há um override de `postcss` no package.json para zerar o `npm audit`.
@@ -63,6 +65,19 @@ Guia de instalação para pessoas: `README.md`. Este arquivo guarda o contexto p
 - `scripts/blender/flores.py` renderiza (Blender 5.2, EEVEE, fundo transparente) as 8 pétalas e os 56 quadros da rosa: `blender -b --factory-startup -P flores.py -- petals|rose <pasta> [quadros]`. `pack.py` gera as pétalas WebP e `pack_rose.py <destino> 300 70` gera a rosa animada (38 quadros, toca uma vez, ~277 KB). Saída em `public/images/efeitos/`.
 - `PetalFall.tsx` (pétalas caindo atrás do hero, só com JS, fora de `?static` e sem "reduzir movimento"). A rosa fica em `.hero__rose` com `<picture>` (estática `rosa.webp` para quem reduz movimento). Também há zoom lento da foto do hero. Pétalas: 8 no computador, 5 no celular (os brilhinhos foram removidos para o hero ficar menos carregado).
 - Painel: a barra lateral é `sticky` (fixa) no computador e o topo é fixo no celular (`admin.css`).
+
+## E-mails (painel → E-mails, era "Newsletter")
+- Abas em `src/app/admin/(panel)/emails/`: Visão geral, Escrever (`nova`), Enviadas (`enviadas/[id]` = relatório com quem recebeu/abriu/clicou, funil, links, prévia do HTML enviado), Automáticos (boas-vindas e testes, pelos eventos transacionais), Inscritas (busca, filtro, paginação, CSV em `inscritas/exportar`, e `inscritas/[email]` = histórico da pessoa), Configuração (remetente, DNS do domínio, modelos). `/admin/newsletter` redireciona para `/admin/emails`. Helpers em `emails/shared.tsx` (páginas não podem exportar componentes).
+- `src/lib/brevo.ts`: cliente da API (só servidor). `pickSender()` prefere o domínio próprio e usa o nome do blog como remetente. `src/lib/email-templates.ts`: HTML de e-mail; campanhas levam `{{ unsubscribe }}`. `src/lib/brevo-sync.ts`: modelos `[Blog] …` (ids 1–5) na área Templates. `src/lib/email-reports.ts`: o Brevo não lista destinatários por campanha, então cruzamos os contatos da lista com `campaignStats` de cada um (lotes de 5, cache de 10 min com a tag `campaign-<id>`, botão Atualizar).
+- **`/contacts/{email}/campaignStats` é instável** (às vezes leva 10 s ou trava). Ele tem limite de 8 s e uma nova tentativa, e as falhas viram "não conferidas" sem derrubar a página. O Brevo devolve `dns_records.dkim_record: null`, que precisa ser filtrado.
+- `newsletter-actions.ts`: prévia, teste (transacional), envio (redireciona para o relatório), `refreshCampaign`, sincronizar modelos, remover inscrita. Arquivos `"use server"` só exportam funções async.
+
+## Segurança do painel (25/10/2026)
+- 2FA obrigatório (TOTP do Supabase). O middleware manda sessões `aal1` para `/admin/verificar` (cadastro por QR code na 1ª vez e código nas seguintes). `signIn` redireciona para lá. As actions `mfaEnroll`/`mfaVerify` ficam em `actions.ts`.
+- `is_admin()` exige `auth.jwt()->>'aal' = 'aal2'` (em `schema.sql`). Validado por SQL com claims aal1 (false) e aal2 (true).
+- Limite de tentativas em memória (`src/lib/rate-limit.ts`): login 5/IP e 8/e-mail, 2FA 6/IP a cada 15 min. Cabeçalhos: HSTS, Permissions-Policy, COOP, CSP mínima (sem restringir scripts), `/admin` com `frame-ancestors 'none'`, `poweredByHeader: false`.
+- Bloqueio por IP foi descartado: o IP residencial muda e o 4G tem outro.
+- Recuperação (perdeu o celular): apagar de `auth.mfa_factors` (SQL no README).
 
 ## Estatísticas de acesso (painel → Estatísticas)
 - `supabase/analytics.sql` (migração `analytics` já aplicada): tabela `page_views` sem políticas RLS (ninguém lê direto), `track_view()` (anon pode chamar; ignora `/admin` e `/api`) e `analytics_summary(dias)` (só `is_admin()`). Sem cookies e sem IP: o visitante é `sha256(sal diário + IP + user-agent)`, e o sal do dia anterior é apagado. Histórico de ~400 dias. Fuso: America/Sao_Paulo.

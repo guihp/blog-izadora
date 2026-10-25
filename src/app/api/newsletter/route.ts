@@ -1,4 +1,7 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
+import { sendTransactional } from "@/lib/brevo";
+import { getSettings } from "@/lib/data";
+import { welcomeEmail } from "@/lib/email-templates";
 import { getNewsletterProvider, subscribe } from "@/lib/newsletter";
 import { isValidEmail } from "@/lib/utils";
 
@@ -49,10 +52,27 @@ export async function POST(request: Request) {
   try {
     const result = await subscribe(provider, email);
     if (result.ok) {
+      if (provider === "brevo" && result.isNew) {
+        // Boas-vindas depois da resposta; se falhar, a inscrição continua valendo
+        after(async () => {
+          try {
+            const settings = await getSettings();
+            const mail = welcomeEmail({ settings });
+            await sendTransactional(email, mail.subject, mail.html, settings.siteName);
+          } catch (error) {
+            console.error("[newsletter] boas-vindas", error);
+          }
+        });
+      }
       return NextResponse.json({
         message: result.alreadySubscribed
           ? "Você já faz parte das cartinhas! ♡"
-          : "Inscrição feita! Confira sua caixa de entrada (e o spam) para confirmar. ♡",
+          : provider === "brevo"
+            ? // o Brevo (via /v3/contacts) não pede confirmação; só mandamos as boas-vindas
+              result.isNew
+              ? "Inscrição feita! Uma cartinha de boas-vindas está a caminho do seu e-mail. ♡"
+              : "Inscrição feita! As próximas cartinhas chegam no seu e-mail. ♡"
+            : "Inscrição feita! Confira sua caixa de entrada (e o spam) para confirmar. ♡",
       });
     }
     return NextResponse.json(
